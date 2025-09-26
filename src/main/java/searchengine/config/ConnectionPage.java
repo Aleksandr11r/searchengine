@@ -1,0 +1,11 @@
+package searchengine.config;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class ConnectionPage {
+    private final AppConfigProperties appConfigProperties;
+
+}

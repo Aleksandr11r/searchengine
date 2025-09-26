@@ -3,7 +3,7 @@ package searchengine.dto.statistics;
 import lombok.Data;
 
 @Data
-public class TotalStatistics {
+public class TotalStatisticsDto {
     private int sites;
     private int pages;
     private int lemmas;

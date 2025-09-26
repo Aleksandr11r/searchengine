@@ -2,63 +2,62 @@ package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import searchengine.config.Site;
+import searchengine.config.Sites;
 import searchengine.config.SitesList;
-import searchengine.dto.statistics.DetailedStatisticsItem;
-import searchengine.dto.statistics.StatisticsData;
-import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.dto.statistics.TotalStatistics;
+import searchengine.dto.statistics.DetailedStatisticsItemDto;
+import searchengine.dto.statistics.StatisticsDataDto;
+import searchengine.dto.statistics.StatisticsResponseDto;
+import searchengine.dto.statistics.TotalStatisticsDto;
+import searchengine.model.Site;
+import searchengine.repositories.LemmaRepository;
+import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
-
-    private final Random random = new Random();
+    private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+    private final SiteRepository siteRepository;
     private final SitesList sites;
-
     @Override
-    public StatisticsResponse getStatistics() {
-        String[] statuses = { "INDEXED", "FAILED", "INDEXING" };
-        String[] errors = {
-                "Ошибка индексации: главная страница сайта не доступна",
-                "Ошибка индексации: сайт не доступен",
-                ""
-        };
+    public StatisticsResponseDto getStatistics() {
 
-        TotalStatistics total = new TotalStatistics();
+        TotalStatisticsDto total = new TotalStatisticsDto();
         total.setSites(sites.getSites().size());
         total.setIndexing(true);
 
-        List<DetailedStatisticsItem> detailed = new ArrayList<>();
-        List<Site> sitesList = sites.getSites();
+        List<DetailedStatisticsItemDto> detailed = new ArrayList<>();
+        List<Sites> sitesList = sites.getSites();
         for(int i = 0; i < sitesList.size(); i++) {
-            Site site = sitesList.get(i);
-            DetailedStatisticsItem item = new DetailedStatisticsItem();
+            Sites site = sitesList.get(i);
+            DetailedStatisticsItemDto item = new DetailedStatisticsItemDto();
             item.setName(site.getName());
             item.setUrl(site.getUrl());
-            int pages = random.nextInt(1_000);
-            int lemmas = pages * random.nextInt(1_000);
+            Site sites = siteRepository.findByUrl(site.getUrl());
+            int pages = sites == null ? 0 : pageRepository.countPagesToSite(sites.getId());
+            int lemmas = sites == null ? 0 : lemmaRepository.countLemmaToSite(sites.getId());
             item.setPages(pages);
             item.setLemmas(lemmas);
-            item.setStatus(statuses[i % 3]);
-            item.setError(errors[i % 3]);
-            item.setStatusTime(System.currentTimeMillis() -
-                    (random.nextInt(10_000)));
+            item.setStatus(sites == null ? "Сайт не проиндексирован" : sites.getStatus().toString());
+            item.setError(sites == null ? "Сайт не проиндексирован" : sites.getError());
+            item.setStatusTime(sites == null ? 0 : sites.getStatusTime().getLong(ChronoField.MILLI_OF_SECOND));
             total.setPages(total.getPages() + pages);
             total.setLemmas(total.getLemmas() + lemmas);
             detailed.add(item);
         }
 
-        StatisticsResponse response = new StatisticsResponse();
-        StatisticsData data = new StatisticsData();
+        StatisticsResponseDto response = new StatisticsResponseDto();
+        StatisticsDataDto data = new StatisticsDataDto();
         data.setTotal(total);
         data.setDetailed(detailed);
         response.setStatistics(data);
         response.setResult(true);
         return response;
     }
+
 }
