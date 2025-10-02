@@ -15,42 +15,47 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
     @Slf4j
     public class SiteCrawler extends RecursiveTask<List<Page>> {
-        private static String HEAD_URL;
+        private final String headUrl;
         private final String another_url;
         private final Set<String> visitedUrls;
         private final AppConfigProperties connectionSetting;
         private static final Pattern FILE_PATTERN = Pattern
                 .compile(".*\\.(jpg|jpeg|png|gif|bmp|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|tar|gz|7z|mp3|wav|mp4|mkv|avi|mov|sql)$", Pattern.CASE_INSENSITIVE);
-        public SiteCrawler(String url, AppConfigProperties connectionSetting) {
-            this(url, ConcurrentHashMap.newKeySet(), connectionSetting);
-            HEAD_URL = url;
+        private final AtomicBoolean indexingInProgress;
+
+        public SiteCrawler(String headUrl, AppConfigProperties connectionSetting, AtomicBoolean indexingInProgress) {
+            this(headUrl, headUrl, ConcurrentHashMap.newKeySet(), connectionSetting, indexingInProgress);
         }
-        public SiteCrawler(String url, Set<String> visitedUrls, AppConfigProperties connectionSetting) {
+        public SiteCrawler(String headUrl, String url, Set<String> visitedUrls, AppConfigProperties connectionSetting, AtomicBoolean indexingInProgress) {
+            this.headUrl = headUrl;
             this.another_url = url;
             this.visitedUrls = visitedUrls;
             this.connectionSetting = connectionSetting;
+            this.indexingInProgress = indexingInProgress;
         }
-        public SiteCrawler(String HeadUrl, String another_url, AppConfigProperties connectionSetting) {
-            HEAD_URL = HeadUrl;
+
+        public SiteCrawler(String HeadUrl, String another_url, AppConfigProperties connectionSetting, AtomicBoolean indexingInProgress) {
+            this.headUrl = HeadUrl;
             this.another_url = another_url;
             this.connectionSetting = connectionSetting;
             this.visitedUrls = ConcurrentHashMap.newKeySet();
+            this.indexingInProgress = indexingInProgress;
         }
 
         @Override
         public List<Page> compute() {
             Page currentPage = new Page();
-            currentPage.setPath((another_url.substring(HEAD_URL.length())));
+            currentPage.setPath((another_url.substring(headUrl.length())));
             List<Page> pages = new ArrayList<>();
 
             if (visitedUrls.contains(another_url)) {
                 return pages;
             }
-            if (Thread.currentThread().isInterrupted() || getPool().isShutdown()){
-                Thread.currentThread().interrupt();
+            if (!indexingInProgress.get()) {
                 return pages;
             }
             visitedUrls.add(another_url);
@@ -69,8 +74,7 @@ import java.util.regex.Pattern;
                 currentPage.setCode(500);
                 currentPage.setContent(e.getMessage().isEmpty() ? "Индексация остановлена пользователем" : e.getMessage());
                 pages.add(currentPage);
-                if(Thread.currentThread().isInterrupted() || getPool().isShutdown()){
-                    Thread.currentThread().interrupt();
+                if (!indexingInProgress.get()) {
                     return pages;
                 }
             }
@@ -90,31 +94,36 @@ import java.util.regex.Pattern;
         }
 
         private void processLinks(String сontent, Set<String> visitedUrls, List<SiteCrawler> crawlers) {
-            Document document = Jsoup.parse(сontent);
+            Document document = Jsoup.parse(сontent, another_url);
             Elements links = document.select("a");
             for (Element link : links) {
-                if(Thread.currentThread().isInterrupted() || getPool().isShutdown()){
-                    Thread.currentThread().interrupt();
+                if (!indexingInProgress.get()) {
                     break;
                 }
                 String href = link.attr("abs:href").trim();
                 if(isValidLink(href)) {
-                    SiteCrawler crawlerInstance = new SiteCrawler(href, visitedUrls, connectionSetting);
-                    crawlerInstance.fork();
-                    crawlers.add(crawlerInstance);
+                    try {
+                        SiteCrawler crawlerInstance = new SiteCrawler(headUrl, href, visitedUrls, connectionSetting,indexingInProgress);
+                        crawlerInstance.fork();
+                        crawlers.add(crawlerInstance);
+                    }
+                    catch (Exception e)  {
+                        log.error("Ошибка при обработке ссылки" + href + e);
+                    }
                 }
             }
         }
 
         public boolean isValidLink(String urls) {
-            return urls.startsWith(HEAD_URL) && !urls.contains("#") && !visitedUrls.contains(urls)
+            return urls.startsWith(headUrl)
+                    && !urls.contains("#")
+                    && !visitedUrls.contains(urls)
                     && !FILE_PATTERN.matcher(urls).matches();
         }
 
         private List<Page> collectResults(List<SiteCrawler> crawlers, List<Page> pages) {
             for(SiteCrawler crawler : crawlers) {
-                if(Thread.currentThread().isInterrupted() || getPool().isShutdown()){
-                    Thread.currentThread().interrupt();
+                if (!indexingInProgress.get()) {
                     break;
                 }
                 pages.addAll(crawler.join());
@@ -123,7 +132,7 @@ import java.util.regex.Pattern;
         }
 
         public Page computePage() {
-            Page currentPage = new Page(another_url.substring(HEAD_URL.length()));
+            Page currentPage = new Page(another_url.substring(headUrl.length()));
             try {
                 fetchAndParsePage(currentPage, another_url);
             } catch (IOException e) {

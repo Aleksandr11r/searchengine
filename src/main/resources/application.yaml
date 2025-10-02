@@ -4,14 +4,12 @@ app:
 
 indexing-settings:
   sites:
-    - url: https://www.volochek.life/
-      name: volochek
-    - url: https://www.svetlovka.ru/
+    - url: https://nikoartgallery.com/
+      name: nikoartgallery
+    - url: https://ipfran.ru/
+      name: ipfran
+    - url: https://svetlovka.ru/
       name: svetlovka
-    - url: https://www.playback.ru/
-      name: playback
-    - url: https://www.sendel.ru/
-      name: sendel
 
 server:
   port: 8080
@@ -20,11 +18,11 @@ spring:
   datasource:
     username: root
     password: skc888@X
-    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterSetResults=utf8mb4
   jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true

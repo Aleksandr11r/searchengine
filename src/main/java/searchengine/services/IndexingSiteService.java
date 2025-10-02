@@ -61,13 +61,12 @@ public class IndexingSiteService {
         if (indexingInProgress.compareAndSet(false, true)) {
             logger.info("Запуск индексации, значение флага: {}", indexingInProgress);
             forkJoinPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors(), ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
-            forkJoinPool.execute(() -> {
-                for (Sites sitesConfig : sitesList.getSites()) {
-                    indexSite(sitesConfig);
-                }
-            });
+            for (Sites sitesConfig : sitesList.getSites()) {
+                forkJoinPool.submit(() -> indexSite(sitesConfig));
+            }
             return new ResponseSite(true);
-        } else return new ResponseSite(false, "Индексация уже запущена");
+        }
+        else return new ResponseSite(false, "Индексация уже запущена");
     }
 
     public void indexSite(Sites sitesUrl) {
@@ -88,13 +87,15 @@ public class IndexingSiteService {
         siteRepository.save(site);
 
         try {
-            List<Page> pages = new SiteCrawler(sitesUrl.getUrl(), connectionSetting).compute();
+            log.info("Началась индексация сайта: {}", sitesUrl);
+            List<Page> pages = new SiteCrawler(sitesUrl.getUrl(), sitesUrl.getUrl(), connectionSetting, indexingInProgress).compute();
             site.setPageList(addSiteToPage(site, pages));
 
             Pair<List<Lemma>, List<Index>> lemmaAndIndex = findLemmaToText(site, pages);
             site.setLemmaList(lemmaAndIndex.getLeft());
 
             site.setStatus(forkJoinPool.isShutdown() ? FAILED : INDEXED);
+            site.setStatusTime(LocalDateTime.now());
             site.setError(forkJoinPool.isShutdown() ? "Индексация остановлена пользователем" : "");
             
             allInsert(site, pages, lemmaAndIndex);
@@ -215,7 +216,7 @@ public class IndexingSiteService {
         }
 
         try {
-            Page pages = new SiteCrawler(sitesConfig.getUrl(), urlToPage, connectionSetting).computePage();
+            Page pages = new SiteCrawler(sitesConfig.getUrl(), urlToPage, connectionSetting,indexingInProgress).computePage();
             log.info("Страница проиндексирована: {}", urlToPage);
             pages.setSite(site);
 
