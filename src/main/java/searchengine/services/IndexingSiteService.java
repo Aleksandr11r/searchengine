@@ -138,6 +138,15 @@ public class IndexingSiteService {
                 .flatMap(pair -> pair.getRight().stream())
                 .collect(Collectors.toList());
 
+        Map<String, Long> lemmaFrequencyMap = combinedIndexes.stream()
+                .collect(Collectors.groupingBy(index -> index.getLemma().getLemma(),
+                        Collectors.counting()));
+
+        for (Lemma lemma : combinedLemmas) {
+            long count = lemmaFrequencyMap.getOrDefault(lemma.getLemma(), 0L);
+            lemma.setFrequency((int) count);
+        }
+
         return Pair.of(combinedLemmas, combinedIndexes);
     }
 
@@ -162,7 +171,7 @@ public class IndexingSiteService {
     }
 
     private void batchIndexInsert(List<Index> indexList) {
-        String sql = "INSERT INTO indexes (page_id,lemma_id,rank) VALUES (?,?,?)";
+        String sql = "INSERT INTO indexes (page_id,lemma_id,`rank`) VALUES (?,?,?)";
         jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -261,11 +270,9 @@ public class IndexingSiteService {
                 Lemma newLemma = new Lemma();
                 newLemma.setSite(site);
                 newLemma.setLemma(text);
-                newLemma.setFrequency(frequency);
+                newLemma.setFrequency(1);
                 return newLemma;
             });
-
-            lemma.setFrequency(lemma.getFrequency() + frequency);
 
             Index index = new Index();
             index.setPage(page);
