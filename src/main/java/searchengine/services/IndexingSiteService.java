@@ -359,17 +359,17 @@ public class IndexingSiteService {
 
     private List<Lemma> calculatingLemmasOnPages(Set<String> lemmas, Site site) {
         long totalPages = pageRepository.count(); 
-        double threshold = 0.4;
+        double threshold = 0.7;
         Map<String, Lemma> bestLemmas = new HashMap<>();
         
-
         for (String lemma1 : lemmas) { 
             List<Lemma> lemmaList = site == null ? lemmaRepository.findByLemma(lemma1): lemmaRepository.findByLemmaToSiteId(lemma1, site);
+
             for (Lemma currentLemma : lemmaList) { 
                 if (currentLemma != null) {
                     long countPageToLemma = indexRepository.countPageToLemma(currentLemma.getId()); 
                     double lemmaTotalPages = countPageToLemma / totalPages;
-                    if (lemmaTotalPages <= threshold || lemmas.size() < 3) {
+                    if (lemmaTotalPages <= threshold) {
                         bestLemmas.merge(
                                 currentLemma.getLemma(),
                                 currentLemma,
@@ -380,7 +380,7 @@ public class IndexingSiteService {
             }
         }
         return bestLemmas.values().stream().
-                sorted(Comparator.comparing(Lemma::getFrequency).reversed()).
+                sorted(Comparator.comparing(Lemma::getFrequency)).
                 collect(Collectors.toList());
     }
 

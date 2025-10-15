@@ -24,6 +24,6 @@ public class Index {
     private Page page;
 
     @ManyToOne (fetch = FetchType.LAZY,  cascade = CascadeType.ALL)
-    @JoinColumn(name = "lemma_id", nullable = false)
+    @JoinColumn(name = "lemma_id")
     private Lemma lemma;
 }
