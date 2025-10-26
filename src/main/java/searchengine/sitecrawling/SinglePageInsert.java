@@ -13,6 +13,7 @@ import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.repositories.IndexRepository;
+import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.services.IndexingSiteService;
@@ -28,6 +29,7 @@ public class SinglePageInsert {
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final IndexRepository indexRepository;
+    private final LemmaRepository lemmaRepository;
 
     public void singlePageInsert(Site site, Page page, Pair<List<Lemma>, List<Index>> lemmaAndIndex) {
         try {
@@ -37,12 +39,15 @@ public class SinglePageInsert {
             logger.info("Сохранение страницы: {}", page.getPath());
             pageRepository.save(page);
 
+            logger.info("Сохранение лемм: {}", site.getName());
+            lemmaRepository.saveAll(lemmaAndIndex.getLeft());
+
             logger.info("Сохранение индексов: {}", page.getPath());
             indexRepository.saveAll(lemmaAndIndex.getRight());
 
             logger.info("Сохранение страницы и её метаданных завершилось.");
         } catch (Exception e) {
-            logger.error("Ошибка при сохранении страницы {}: {}", page.getPath(), e.getMessage());
+            logger.error("Ошибка при сохранении страницы: {}", e.getMessage());
         }
     }
 }

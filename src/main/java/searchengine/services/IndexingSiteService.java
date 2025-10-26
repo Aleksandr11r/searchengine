@@ -128,15 +128,38 @@ public class IndexingSiteService {
     private Pair<List<Lemma>, List<Index>> findLemmaToText(Site site, List<Page> pages) {
         List<Pair<List<Lemma>, List<Index>>> results = pages.parallelStream()
                 .map(page -> findLemmaForSinglePage(page, site)).toList();
+        
+        List<Lemma> oldLemmas = results.stream()
+                .flatMap(pair -> pair.getLeft().stream())
+                .collect(Collectors.toList());
 
         List<Lemma> combinedLemmas = results.stream()
                 .flatMap(pair -> pair.getLeft().stream())
                 .distinct()
                 .collect(Collectors.toList());
 
+        Map<Lemma, Lemma> lemmaMapping = new HashMap<>();
+        oldLemmas.forEach(oldLemma -> {
+            Lemma uniqueLemma = combinedLemmas.stream()
+                    .filter(l -> l.equals(oldLemma))
+                    .findFirst()
+                    .orElse(null);
+            if (uniqueLemma != null) {
+                lemmaMapping.put(oldLemma, uniqueLemma);
+            }
+        });
+
         List<Index> combinedIndexes = results.stream()
                 .flatMap(pair -> pair.getRight().stream())
                 .collect(Collectors.toList());
+
+        combinedIndexes.forEach(index -> {
+            Lemma oldLemma = index.getLemma();
+            Lemma newLemma = lemmaMapping.get(oldLemma);
+            if (newLemma != null) {
+                index.setLemma(newLemma);
+            }
+        });
 
         Map<String, Long> lemmaFrequencyMap = combinedIndexes.stream()
                 .collect(Collectors.groupingBy(index -> index.getLemma().getLemma(),
@@ -262,21 +285,19 @@ public class IndexingSiteService {
 
         Map<String, Integer> extractedLemmas = lemmaExtraction.searchLemma(page.getContent());
 
-        for(Map.Entry<String, Integer> entry : extractedLemmas.entrySet()) {
+        for (Map.Entry<String, Integer> entry : extractedLemmas.entrySet()) {
             String lemmaText = entry.getKey();
             int frequency = entry.getValue();
 
-            Lemma lemma = lemmasMap.computeIfAbsent(lemmaText, text -> {
-                Lemma newLemma = new Lemma();
-                newLemma.setSite(site);
-                newLemma.setLemma(text);
-                newLemma.setFrequency(1);
-                return newLemma;
-            });
+            Lemma newLemma = new Lemma();
+            newLemma.setSite(site);
+            newLemma.setLemma(lemmaText);
+            newLemma.setFrequency(1);
+            lemmasMap.put(lemmaText, newLemma);
 
             Index index = new Index();
             index.setPage(page);
-            index.setLemma(lemma);
+            index.setLemma(newLemma);
             index.setRank((float) frequency);
             indexes.add(index);
         }
@@ -380,7 +401,7 @@ public class IndexingSiteService {
             }
         }
         return bestLemmas.values().stream().
-                sorted(Comparator.comparing(Lemma::getFrequency)).
+                sorted(Comparator.comparing(Lemma::getFrequency).reversed()).
                 collect(Collectors.toList());
     }
 

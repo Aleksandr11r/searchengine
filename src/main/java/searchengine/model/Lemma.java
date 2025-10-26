@@ -29,7 +29,7 @@ public class Lemma {
     @JoinColumn(name = "site_id")
     private Site site;
 
-    @OneToMany(mappedBy = "lemma", fetch = FetchType.LAZY, orphanRemoval=true)
+    @OneToMany(mappedBy = "lemma", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     private List<Index> indexList;
 
     @Override

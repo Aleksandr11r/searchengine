@@ -23,7 +23,7 @@ public class Index {
     @JoinColumn (name = "page_id", nullable = false)
     private Page page;
 
-    @ManyToOne (fetch = FetchType.LAZY,  cascade = CascadeType.ALL)
-    @JoinColumn(name = "lemma_id")
+    @ManyToOne (fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+    @JoinColumn(name = "lemma_id", nullable = false)
     private Lemma lemma;
 }
