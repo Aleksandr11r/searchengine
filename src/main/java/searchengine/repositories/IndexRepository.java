@@ -11,8 +11,6 @@ import java.util.List;
 
 @Repository
 public interface IndexRepository extends JpaRepository<Index,Integer> {
-    @Query("SELECT COUNT(i) FROM Index i WHERE i.lemma.id = :id")
-    Long countPageToLemma(@Param("id") Integer id);
 
     @Query("SELECT p FROM Index i INNER JOIN i.page p WHERE i.lemma.lemma = :lemma")
     List<Page> findPagesByLemma(@Param("lemma") String lemma);

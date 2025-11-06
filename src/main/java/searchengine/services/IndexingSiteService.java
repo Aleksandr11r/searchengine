@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.AppConfigProperties;
 import searchengine.config.Sites;
 import searchengine.config.SitesList;
@@ -223,6 +224,7 @@ public class IndexingSiteService {
         }
     }
 
+    @Transactional
     public ResponseSite indexPage(String url) {
         String urlToPage = URLDecoder.decode(url.substring(url.indexOf("h")), StandardCharsets.UTF_8);
 
@@ -237,7 +239,8 @@ public class IndexingSiteService {
 
         if (checkIndexingPage(urlToPage, sitesConfig)) {
             log.info("Cтраница {} есть в базе данных", urlToPage);
-            pageRepository.deletePageByPath(urlToPage.substring(sitesConfig.getUrl().length()));
+            String pageToDelete = urlToPage.substring(sitesConfig.getUrl().length());
+            pageRepository.deletePageByPath(pageToDelete);
             log.info("Все данные которые были связаны со страницей: {} удалены", urlToPage);
         }
 
@@ -253,6 +256,7 @@ public class IndexingSiteService {
             pages.setSite(site);
 
             Pair<List<Lemma>, List<Index>> lemmaAndIndex = findLemmaForSinglePage(pages, site);
+
             site.setLemmaList(lemmaAndIndex.getLeft());
             log.info("Найдено лемм: {}", lemmaAndIndex.getLeft().size());
             site.setStatus(INDEXED);
@@ -388,7 +392,7 @@ public class IndexingSiteService {
 
             for (Lemma currentLemma : lemmaList) { 
                 if (currentLemma != null) {
-                    long countPageToLemma = indexRepository.countPageToLemma(currentLemma.getId()); 
+                    long countPageToLemma = currentLemma.getFrequency();
                     double lemmaTotalPages = countPageToLemma / totalPages;
                     if (lemmaTotalPages <= threshold) {
                         bestLemmas.merge(

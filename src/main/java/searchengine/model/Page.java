@@ -31,7 +31,7 @@ public class Page {
     @JoinColumn(name = "site_id")
     private Site site;
 
-    @OneToMany(mappedBy = "page", cascade = CascadeType.REMOVE,fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "page", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     private List<Index> indexList;
 
     public Page(String path) {

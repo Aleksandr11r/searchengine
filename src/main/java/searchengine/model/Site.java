@@ -38,10 +38,10 @@ public class Site {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @OneToMany(mappedBy = "site", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List <Page> pageList;
 
-    @OneToMany(mappedBy = "site", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List <Lemma> lemmaList;
 }
 
